@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+
+    <title>Beaker-RSpec</title>
+
+    <meta name="description" content="Puppet module acceptance testing">
+    <meta name="author" content="Leo Arnold">
+
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/presentation.css">
+    <script src="js/presentation.js"></script>
+</head>
+
+<body class="auto-fragment">
+
+<section>
+    <h1>Beaker-RSpec</h1>
+    <h3>Puppet module acceptance testing</h3>
+    <p style="padding-top:15%">
+        <a href="https://github.com/leoarnold/">Leo Arnold</a><br/>
+        Munich Puppet User Group<br/>
+        Google Munich, 2017-05-09
+    </p>
+</section>
+
+<section data-title="Why acceptance tests?">
+    <section>
+       <h2><I>
+       "We already tested<p/>
+       <B>everything</B><p/>
+       with RSpec-Puppet ..."
+       </I></h2>
+    </section>
+
+    <section>
+        <h2><I>
+        "... what could possibly</p>
+        go wrong!?"
+        </I></h2>
+    </section>
+
+    <section>
+        <h3>Parsing output</h3>
+        <pre><code class="text" data-trim>
+$ lpstat -l -p Office
+        </code></pre>
+
+        <pre><code class="text" data-trim>
+printer Office disabled since Thu 30 Mar 2017 11:19:39 PM UTC -
+        reason unknown
+        Form mounted:
+        Content types: any
+        Printer types: unknown
+        Description: Office
+        Alerts: none
+        Location: 
+        Connection: direct
+        Interface: /etc/cups/ppd/Office.ppd
+        [...]
+        </code></pre>
+    </section>
+
+    <section>
+        <h3>Gotcha: locale</h3>
+        <pre><code class="text" data-trim>
+$ LANG="ja" lpstat -l -p Office
+        </code></pre>
+
+        <pre><code class="text" data-trim>
+プリンター Office は Thu Mar 30 23:19:39 2017 から無効です -
+        未知の理由
+        設定されたフォーム:
+        コンテンツの種類: すべて
+        プリンターの種類: 不明
+        説明: Office
+        警告: paused
+        場所: 
+        接続: 直結
+        インターフェイス: /etc/cups/ppd/Office.ppd
+        [...]
+        </code></pre>
+    </section>
+    
+    <section>
+        <h2>Solution: Beaker</h2>
+        <h3>Sets up a VM and applies your manifests.</h3>
+        
+        <pre><code class="yaml" data-trim>HOSTS:
+  ubuntu-16.04-i386:
+    roles:
+      - master
+    platform: ubuntu-16.04-i386
+    box: bento/ubuntu-16.04-i386
+    hypervisor: vagrant
+CONFIG:
+  type: foss
+  log_level: debug</code></pre>
+    </section>
+    
+    <section>
+        <h2><I>
+        "But I don't use<p/>
+        custom types or providers,<p/>
+        so I'm good, right?"
+        </I></h2>
+    </section>
+
+    <section>
+        <h3>Gotcha: OS upgrade / change</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Operating system</th>
+                    <th>CUPS package</th>
+                    <th>IPPtool package</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Fedora 25</td>
+                    <td>cups</td>
+                    <td>cups-ipptool</td>
+                </tr>
+                <tr>
+                    <td>SLES 12</td>
+                    <td>cups</td>
+                    <td>---</td>
+                </tr>
+                <tr>
+                    <td>Ubuntu ≤ 15.04</td>
+                    <td>cups</td>
+                    <td>---</td>
+                </tr>
+                <tr>
+                    <td>Ubuntu ≥ 15.10</td>
+                    <td>cups</td>
+                    <td>cups-ipp-utils</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Solution: ServerSpec</h2>
+
+        <pre><code class="ruby">describe service('cups') do
+  it { should be_running }
+  it { should be_enabled }
+end
+
+describe file('/usr/bin/ipptool') do
+  it { should be_file }
+  it { should be_executable }
+end</code></pre>
+
+    Documentation: <a href="http://serverspec.org/resource_types.html" target="_blank">http://serverspec.org/resource_types.html</a>
+    </section>
+</section>
+
+<section data-title="Beaker">
+    <section>
+        <h2>Solution: Beaker-RSpec</h2>
+        <pre><code class="ruby"># spec/spec_helper_acceptance.rb
+require 'beaker-rspec'
+
+RSpec.configure do |c|
+  project_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+  c.before(:suite) do
+    hosts.each do |host|
+      install_puppet_agent_on(host)
+      copy_module_to(host, source: project_root, module_name: 'cups')
+    end
+  end
+end</code></pre>
+    </section>
+</section>
+
+<section data-title="Beaker-RSpec">
+    <section>
+        <h2>Solution: Beaker-RSpec</h2>
+        <pre><code class="ruby"># spec/spec_helper_acceptance.rb
+require 'beaker-rspec'
+
+RSpec.configure do |c|
+  project_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+  c.before(:suite) do
+    hosts.each do |host|
+      install_puppet_agent_on(host)
+      copy_module_to(host, source: project_root, module_name: 'cups')
+    end
+  end
+end</code></pre>
+    </section>
+</section>
+
+<section data-title="leoarnold-cups">
+    <section>
+        <h3>leoarnold-cups</h3>
+        <ul>
+            <li>written from scratch</li>
+            <li>300+ unit tests</li>
+            <li>200+ acceptance tests</li>
+            <li>independent of locale</li>
+            <li>features galore</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Success story</h3>
+        <img src="img/Forge.png" width="100%"/>
+    </section>
+
+    <section>
+        <h3>Check it out</h3>
+        <p>
+            Puppet Forge:<br/>
+            <a href="https://forge.puppet.com/leoarnold/cups" target="_blank">https://forge.puppet.com/leoarnold/cups</a>
+        </p>
+        <p>
+            Source Code:<br/>
+            <a href="https://github.com/leoarnold/puppet-cups" target="_blank">https://github.com/leoarnold/puppet-cups</a>
+        </p>
+    </section>
+</section>
+
+<section>
+    <h1>Thank you!</h1>
+    
+    <div style="height: 40%">&nbsp;</div>
+    
+    <p>
+        Slides:<br/>
+        <a href="https://leoarnold.github.io/talk-20170509-beaker-rspec">leoarnold.github.io/talk-20170509-beaker-rspec</a>
+    </p>
+    <p>
+        Source:<br/>
+        <a href="https://github.com/leoarnold/talk-20170509-beaker-rspec">github.com/leoarnold/talk-20170509-beaker-rspec</a>
+    </p> 
+</section>
+</body>
+</html>
