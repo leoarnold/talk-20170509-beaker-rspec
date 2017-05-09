@@ -29,6 +29,36 @@
     </p>
 </section>
 
+<section data-title="About me">
+    <section>
+        <h3>leoarnold-cups</h3>
+        <ul>
+            <li>written from scratch</li>
+            <li>300+ unit tests</li>
+            <li>200+ acceptance tests</li>
+            <li>independent of locale</li>
+            <li>features galore</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Success story</h3>
+        <img src="img/Forge.png" width="100%"/>
+    </section>
+
+    <section>
+        <h3>Check it out</h3>
+        <p>
+            Puppet Forge:<br/>
+            <a href="https://forge.puppet.com/leoarnold/cups" target="_blank">https://forge.puppet.com/leoarnold/cups</a>
+        </p>
+        <p>
+            Source Code:<br/>
+            <a href="https://github.com/leoarnold/puppet-cups" target="_blank">https://github.com/leoarnold/puppet-cups</a>
+        </p>
+    </section>
+</section>
+
 <section data-title="Why acceptance tests?">
     <section>
        <h2><I>
@@ -45,6 +75,10 @@
         </I></h2>
     </section>
 
+    <section>
+        <h2>Case: custom provider</h2>
+    </section>
+    
     <section>
         <h3>Parsing output</h3>
         <pre><code class="text" data-trim>
@@ -89,20 +123,10 @@ $ LANG="ja" lpstat -l -p Office
     
     <section>
         <h2>Solution: Beaker</h2>
-        <h3>Sets up a VM and applies your manifests.</h3>
-        
-        <pre><code class="yaml" data-trim>HOSTS:
-  ubuntu-16.04-i386:
-    roles:
-      - master
-    platform: ubuntu-16.04-i386
-    box: bento/ubuntu-16.04-i386
-    hypervisor: vagrant
-CONFIG:
-  type: foss
-  log_level: debug</code></pre>
+        <h3>See your manifests fail in a VM,</h3>
+        <h3><b>not</b> in production</h3>
     </section>
-    
+        
     <section>
         <h2><I>
         "But I don't use<p/>
@@ -112,7 +136,11 @@ CONFIG:
     </section>
 
     <section>
-        <h3>Gotcha: OS upgrade / change</h3>
+        <h2>Case: OS upgrade / change</h2>
+    </section>
+
+    <section>
+        <h3>Is <code>ipptool</code> in the <code>cups</code> package?</h3>
         
         <table>
             <thead>
@@ -166,26 +194,88 @@ end</code></pre>
 
 <section data-title="Beaker">
     <section>
-        <h2>Solution: Beaker-RSpec</h2>
-        <pre><code class="ruby"># spec/spec_helper_acceptance.rb
-require 'beaker-rspec'
+        <h3>Beaker</h3>
+        
+        <ul>
+            <li>this one: <a href="https://github.com/puppetlabs/beaker" target="_blank">github.com/puppetlabs/beaker</a></li>
+            <li><b>NOT</b> that one: <a href="https://beaker-project.org" target="_blank">beaker-project.org</a></li>
+            <li>wrapper around hypervisors:
+            <ul>
+                <li>Vagrant (best practice)</li>
+                <li>Docker (beware)</li>
+                <li>vSphere</li>
+                <li>AWS</li>
+                <li>...</li>
+            </ul>
+            </li>
+            <li>define 1..n virtual machines in a <i>nodeset</i></li>
+        </ul>
+    </section>
+    
+    <section>
+        <h3>Beaker nodeset</h3>
+        
+    <pre><code class="yaml" data-trim># myNodes.yml
+HOSTS:
+  MyPuppetMaster:                 # VM name
+    roles:
+      - master                    # master / agent / database / ...
+    platform: ubuntu-16.04-i386   # must match /^OSFAMILY-VERSION-ARCH.*$/
+    hypervisor: vagrant
+    box: bento/ubuntu-16.04-i386
+  MyPuppetAgent:                  # A second VM in the same nodeset
+    # ...
+CONFIG:
+  type: foss                      # use Puppet community edition
+  log_level: debug                # be *extremely* verbose</code></pre>
+  
+        Documentation: <a href="https://github.com/puppetlabs/beaker/blob/master/docs/tutorials/creating_a_test_environment.md" target="_blank">creating_a_test_environment.md</a>
+    </section>
 
-RSpec.configure do |c|
-  project_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-  c.before(:suite) do
-    hosts.each do |host|
-      install_puppet_agent_on(host)
-      copy_module_to(host, source: project_root, module_name: 'cups')
-    end
-  end
-end</code></pre>
+    <section>
+        <h3>Beaker commands</h3>
+        
+        <pre><code class="ruby" data-trim># shell - run commands via SSH
+shell('/usr/games/cowsay "Hello Beaker!"')
+
+shell('/bin/false', acceptable_exit_codes: [0, 1])
+
+
+# apply_manifest
+## fail when Puppet fails
+apply_manifest('include cups')
+
+## fail when Puppet fails OR succeeds without changes
+apply_manifest('include cups', expect_changes: true)
+
+## fail when Puppet fails OR applies changes successfully
+apply_manifest('include cups', catch_changes: true)
+
+
+# Nodeset with multiple VMs
+shell_on('master', '/usr/games/cowsay "Hello Beaker!"')</ul>
+
+apply_manifest_on('agent', 'include cups')</code></pre>
+
+        see <a href="http://www.rubydoc.info/github/puppetlabs/beaker/Beaker/DSL/Helpers" target="_blank">Beaker::DSL::Helpers</a> and
+        <a href="http://www.rubydoc.info/github/puppetlabs/beaker/Beaker/DSL/Helpers/PuppetHelpers" target="_blank">Beaker::DSL::Helpers::PuppetHelpers</a></li>
     </section>
 </section>
 
 <section data-title="Beaker-RSpec">
     <section>
-        <h2>Solution: Beaker-RSpec</h2>
-        <pre><code class="ruby"># spec/spec_helper_acceptance.rb
+        <h3>Setting up Beaker-RSpec</h3>
+        
+        <pre><code class="text">$ sudo apt-get install libxml2-dev libxslt1-dev g++ zlib1g-dev</code></pre>
+        
+        <span class="fragment" data-fragment-index="1">
+            <pre><code class="ruby">#Gemfile
+# ...
+group :acceptance_testing do
+  gem 'beaker-rspec'
+end</code></pre></span>
+
+        <span class="fragment" data-fragment-index="2"><pre><code class="ruby"># spec/spec_helper_acceptance.rb
 require 'beaker-rspec'
 
 RSpec.configure do |c|
@@ -196,37 +286,154 @@ RSpec.configure do |c|
       copy_module_to(host, source: project_root, module_name: 'cups')
     end
   end
-end</code></pre>
+end</code></pre></span>
     </section>
-</section>
 
-<section data-title="leoarnold-cups">
     <section>
-        <h3>leoarnold-cups</h3>
+        <h3>Default nodeset</h3>        
+
+        <pre><code class="yaml" data-trim># spec/acceptance/nodesets/default.yml
+HOSTS:
+  UbuntuXenial:
+    roles:
+      - master
+    platform: ubuntu-16.04-i386
+    hypervisor: vagrant
+    box: bento/ubuntu-16.04-i386
+CONFIG:
+  type: foss
+  log_level: debug</code></pre>
+    </section>
+
+    <section>
+        <h3>Acceptance test skeleton</h3>
+        
+        <pre><code class="ruby" data-trim># spec/acceptance/puppet/skeleton_spec.rb
+
+# Run Beaker, set up VMs, ...
+require 'spec_helper_acceptance'
+
+# Start testing
+describe 'My use case' do
+  # ...
+end</code></pre>
+
+        <span class="fragment" data-fragment-index="1">
+            <pre><code class="text">$ [bundle exec] rspec spec/acceptance/puppet/skeleton_spec.rb</code></pre>
+        </span>
+    </section>
+
+    <section>
+        <h3>Environment Variables</h3>
+        
         <ul>
-            <li>written from scratch</li>
-            <li>300+ unit tests</li>
-            <li>200+ acceptance tests</li>
-            <li>independent of locale</li>
-            <li>features galore</li>
+            <li><code>BEAKER_set</code> - which nodeset should be used?</li>
+            <li><code>BEAKER_destroy</code>
+                <ul>
+                    <li><code>"yes"</code> - destroy all VMs at teardown (default)</li>
+                    <li><code>"no"</code> - preserve dirty VMs for analysis</li>
+                </ul>
+            </li>
+            <li><code>BEAKER_provision</code>
+                <ul>
+                    <li><code>"yes"</code> - create a fresh VM before running tests (default)</li>
+                    <li><code>"no"</code> - reuse existing VMs</li>
+                </ul>
+            </li>
         </ul>
     </section>
 
     <section>
-        <h3>Success story</h3>
-        <img src="img/Forge.png" width="100%"/>
+        <h3>Rake tasks</h3>
+
+        <pre><code class="ruby" data-trim># Gemfile
+# ...
+group :development do
+  gem 'puppetlabs_spec_helper'
+end</code></pre>
+
+        
+        <span class="fragment" data-fragment-index="1"><pre><code class="ruby" data-trim># Rakefile
+require 'puppetlabs_spec_helper/rake_tasks'
+# ...</code></pre>
+        
+        <ul>
+            <li><code>rake beaker</code> - run ALL acceptance tests in batch</li>
+            <li><code>rake beaker:ssh</code> - SSH into test system</li>
+        </ul></span>
+    </section>
+</section>
+
+<section data-title="Best practices">
+    <section>
+        <h2>Testing a class</h2>
     </section>
 
     <section>
-        <h3>Check it out</h3>
-        <p>
-            Puppet Forge:<br/>
-            <a href="https://forge.puppet.com/leoarnold/cups" target="_blank">https://forge.puppet.com/leoarnold/cups</a>
-        </p>
-        <p>
-            Source Code:<br/>
-            <a href="https://github.com/leoarnold/puppet-cups" target="_blank">https://github.com/leoarnold/puppet-cups</a>
-        </p>
+        <pre><code class="ruby" data-trim># spec/acceptance/classes/init_spec.rb
+require 'spec_helper_acceptance'
+
+describe 'Including class "cups"' do
+  context 'Default class inclusion' do
+    context 'when applying' do
+      it 'applies without error' do
+        apply_manifest('include cups')
+      end
+
+      it 'is idempotent' do
+        apply_manifest('include cups', catch_changes: true)
+      end
+    end
+
+    context 'after applying' do
+      describe service('cups') do
+        it { should be_running }
+        it { should be_enabled }
+      end
+
+      describe file('/usr/bin/ipptool') do
+        it { should be_file }
+        it { should be_executable }
+      end
+    end
+  end
+end</code></pre>
+
+    </section>
+
+    <section>
+        <h2>Testing a custom provider</h2>
+    </section>
+
+    <section>
+        <pre><code class="ruby" data-trim># spec/acceptance/puppet/cups_queue_properties_spec.rb
+require 'spec_helper_acceptance'
+# ...
+          before(:all) do
+            shell("cupsreject -E TestPrinter")
+          end
+
+          manifest = <<-EOM
+            cups_queue { 'TestPrinter':
+              ensure    => 'printer',
+              accepting => 'true'
+            }
+          EOM
+
+          it 'applies changes' do
+            apply_manifest(manifest, expect_changes: true)
+          end
+
+          it 'sets the correct value' do
+            expect(shell("lpoptions -p TestPrinter").stdout).to \
+              include('printer-is-accepting-jobs=true')
+          end
+
+          it 'is idempotent' do
+            apply_manifest(manifest, catch_changes: true)
+          end
+# ...</code></pre>
+
     </section>
 </section>
 
